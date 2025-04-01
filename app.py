@@ -8,31 +8,23 @@ from langchain.chat_models import ChatOpenAI
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 
-# 🔐 Chave da OpenAI
-import os
+# 🔐 Chave da OpenAI via variável de ambiente (secrets do Streamlit)
 openai_api_key = os.getenv("OPENAI_API_KEY")
-
-llm = ChatOpenAI(
-    model="gpt-4o",
-    temperature=0.4,
-    max_tokens=500,
-    openai_api_key=openai_api_key
-)
 
 # 📄 Função para carregar documentos e QA
 @st.cache_resource
 def carregar_qa_chain():
-    caminho_pdf = "40.pdf"
+    caminho_pdf = "40.pdf"  # Arquivo deve estar no mesmo diretório do app.py
     loader = PyPDFLoader(caminho_pdf)
     documentos = loader.load()
 
     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
     docs = splitter.split_documents(documentos)
 
-    vectorstore = FAISS.from_documents(docs, OpenAIEmbeddings())
+    vectorstore = FAISS.from_documents(docs, OpenAIEmbeddings(openai_api_key=openai_api_key))
     retriever = vectorstore.as_retriever()
 
-    # ✅ Prompt com context + question
+    # ✅ Prompt com contexto e pergunta
     prompt_template = PromptTemplate(
         input_variables=["context", "question"],
         template="""
@@ -40,7 +32,9 @@ Você é um assistente especializado em licenciamento ambiental.
 
 Utilize o contexto abaixo para responder de forma clara e objetiva à pergunta feita.
 
-Caso a resposta não esteja explicitamente presente, mas possa ser inferida com segurança, forneça-a mesmo assim."
+Caso a resposta não esteja explicitamente presente, mas possa ser inferida com segurança, forneça-a mesmo assim.
+
+Se não tiver certeza, diga: "Não tenho certeza, mas a resposta pode ser esta com base no que foi analisado."
 
 -------------------
 {context}
@@ -49,7 +43,12 @@ Pergunta: {question}
 Resposta:"""
     )
 
-    llm = ChatOpenAI(model="gpt-4o", temperature=0.4, max_tokens=500)
+    llm = ChatOpenAI(
+        model="gpt-4o",
+        temperature=0.4,
+        max_tokens=500,
+        openai_api_key=openai_api_key
+    )
 
     qa_chain = RetrievalQA.from_chain_type(
         llm=llm,
@@ -57,6 +56,7 @@ Resposta:"""
         chain_type="stuff",
         chain_type_kwargs={"prompt": prompt_template}
     )
+
     return qa_chain
 
 # 🌐 Interface do app
