@@ -9,7 +9,15 @@ from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 
 # 🔐 Chave da OpenAI
-os.environ["OPENAI_API_KEY"] = "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"
+import os
+openai_api_key = os.getenv("OPENAI_API_KEY")
+
+llm = ChatOpenAI(
+    model="gpt-4o",
+    temperature=0.4,
+    max_tokens=500,
+    openai_api_key=openai_api_key
+)
 
 # 📄 Função para carregar documentos e QA
 @st.cache_resource
